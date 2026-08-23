@@ -8,6 +8,7 @@ import jobsHandler from './api/jobs';
 import jobIdHandler from './api/jobs/[id]';
 import chatHandler from './api/chat';
 import chatMessagesHandler from './api/chat/messages';
+import testGithubHandler from './api/test-github';
 
 function vercelApiDevPlugin(): Plugin {
   return {
@@ -83,6 +84,9 @@ function vercelApiDevPlugin(): Plugin {
           }
           if (pathname === '/api/chat') {
             return await chatHandler(vercelReq, vercelRes);
+          }
+          if (pathname === '/api/test-github') {
+            return await testGithubHandler(vercelReq, vercelRes);
           }
 
           res.statusCode = 404;
