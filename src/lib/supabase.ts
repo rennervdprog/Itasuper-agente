@@ -27,32 +27,25 @@ export interface AgentMemoryRow {
 }
 
 /**
- * Configuration & Credentials
+ * Configuration & Credentials (Frontend Client)
  */
-const supabaseUrl = 
-  (typeof process !== 'undefined' && process.env?.SUPABASE_URL) ||
-  import.meta.env?.VITE_SUPABASE_URL ||
-  '';
-
-const supabaseAnonKey = 
-  (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) ||
-  import.meta.env?.VITE_SUPABASE_ANON_KEY ||
-  '';
+const viteSupabaseUrl = import.meta.env?.VITE_SUPABASE_URL || '';
+const viteSupabaseAnonKey = import.meta.env?.VITE_SUPABASE_ANON_KEY || '';
 
 export const SUPABASE_CONFIG = {
-  url: supabaseUrl,
-  anonKey: supabaseAnonKey,
+  url: viteSupabaseUrl,
+  anonKey: viteSupabaseAnonKey,
   isConfigured: Boolean(
-    supabaseUrl && 
-    supabaseUrl !== 'https://your-project.supabase.co' &&
-    supabaseAnonKey &&
-    supabaseAnonKey !== 'your-anon-key-here'
+    viteSupabaseUrl && 
+    viteSupabaseUrl !== 'https://your-project.supabase.co' &&
+    viteSupabaseAnonKey &&
+    viteSupabaseAnonKey !== 'your-anon-key-here'
   )
 };
 
 /**
  * 1. Public Client (Anon Key)
- * For optional frontend usage or read subscriptions if configured with anon permissions.
+ * For frontend usage: uses import.meta.env.VITE_SUPABASE_URL and import.meta.env.VITE_SUPABASE_ANON_KEY
  */
 let publicClient: SupabaseClient | null = null;
 
@@ -61,7 +54,7 @@ export function getSupabaseClient(): SupabaseClient | null {
     return null;
   }
   if (!publicClient) {
-    publicClient = createClient(supabaseUrl, supabaseAnonKey, {
+    publicClient = createClient(viteSupabaseUrl, viteSupabaseAnonKey, {
       auth: {
         persistSession: true,
         autoRefreshToken: true
@@ -76,6 +69,7 @@ export const supabase = SUPABASE_CONFIG.isConfigured ? getSupabaseClient() : nul
 /**
  * 2. Admin Client (Service Role Key)
  * Exclusive for server-side API routes (/api/*).
+ * Uses process.env.SUPABASE_URL and process.env.SUPABASE_SERVICE_ROLE_KEY.
  * NEVER expose the service role key to the browser client.
  */
 let adminClient: SupabaseClient | null = null;
@@ -90,7 +84,7 @@ export function getSupabaseAdmin(): SupabaseClient {
     return adminClient;
   }
 
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || supabaseUrl;
+  const url = process.env.SUPABASE_URL;
   const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !serviceRoleKey || serviceRoleKey === 'your-service-role-key-here') {

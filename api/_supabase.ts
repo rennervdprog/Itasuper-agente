@@ -4,7 +4,7 @@ import { ServerJob, ServerChatMessage, getStore } from './_store';
 let adminSupabase: SupabaseClient | null = null;
 
 export function getSupabaseAdminServer(): SupabaseClient | null {
-  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL;
+  const url = process.env.SUPABASE_URL;
   const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
   if (!url || !key || key === 'your-service-role-key-here' || url === 'https://your-project.supabase.co') {
