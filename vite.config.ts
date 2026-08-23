@@ -9,6 +9,8 @@ import jobIdHandler from './api/jobs/[id]';
 import chatHandler from './api/chat';
 import chatMessagesHandler from './api/chat/messages';
 import testGithubHandler from './api/test-github';
+import processJobHandler from './api/process-job';
+import repoTreeHandler from './api/repo-tree';
 
 function vercelApiDevPlugin(): Plugin {
   return {
@@ -87,6 +89,12 @@ function vercelApiDevPlugin(): Plugin {
           }
           if (pathname === '/api/test-github') {
             return await testGithubHandler(vercelReq, vercelRes);
+          }
+          if (pathname === '/api/process-job') {
+            return await processJobHandler(vercelReq, vercelRes);
+          }
+          if (pathname === '/api/repo-tree') {
+            return await repoTreeHandler(vercelReq, vercelRes);
           }
 
           res.statusCode = 404;

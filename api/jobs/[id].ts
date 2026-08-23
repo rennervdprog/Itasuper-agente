@@ -65,7 +65,7 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (nextStatus === 'pr_aberto') {
       const prNumber = Math.floor(10 + Math.random() * 89);
       job.prNumber = prNumber;
-      prUrl = `https://github.com/itasuper/${job.repositoryId}/pull/${prNumber}`;
+      prUrl = `https://github.com/rennervdprog/${job.repositoryId}/pull/${prNumber}`;
       job.prUrl = prUrl;
       resultSummary = `Pull Request #${prNumber} gerado e pronto para revisão.`;
       updatedLogs.push({

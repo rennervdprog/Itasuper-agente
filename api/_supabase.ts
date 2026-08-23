@@ -107,7 +107,10 @@ export const dbService = {
   async createJob(data: { repo: string; userMessage: string; branchName?: string }): Promise<ServerJob> {
     const supabase = getSupabaseAdminServer();
     const normalizedRepo = normalizeRepo(data.repo);
-    const branch = data.branchName || `feat/task-${Date.now().toString(36)}`;
+    // NUNCA criar branch antecipadamente; apenas o worker cria branch se houver code_change
+    const branch = data.branchName || null;
+
+    console.log(`[Supabase:createJob] Criando job para repo="${normalizedRepo}", branch=${branch || 'nenhuma (aguardando worker)'}`);
 
     if (!supabase) {
       const newJobId = `job-${Math.floor(100 + Math.random() * 900)}`;
@@ -116,7 +119,7 @@ export const dbService = {
         repositoryId: mapRepoToUI(normalizedRepo),
         originalMessage: data.userMessage,
         status: 'pending',
-        branchName: branch,
+        branchName: branch || undefined,
         createdAt: new Date().toISOString(),
         updatedAt: new Date().toISOString(),
         summary: `Solicitação registrada para ${normalizedRepo}`,
@@ -124,11 +127,12 @@ export const dbService = {
           {
             timestamp: new Date().toISOString(),
             level: 'info',
-            message: `Job registrado no painel.`
+            message: `Job registrado no painel (aguardando análise do worker).`
           }
         ]
       };
       getStore().jobs.unshift(newJob);
+      console.log(`[Supabase:createJob] Job ${newJobId} registrado em memória local (fallback).`);
       return newJob;
     }
 
@@ -145,8 +149,11 @@ export const dbService = {
       .single();
 
     if (error) {
+      console.error(`[Supabase:createJob] Erro ao inserir job no Supabase:`, error);
       throw error;
     }
+
+    console.log(`[Supabase:createJob] Job ${inserted.id} salvo com sucesso no banco agent_jobs (status: pending).`);
 
     return {
       id: inserted.id,
@@ -162,13 +169,65 @@ export const dbService = {
         {
           timestamp: inserted.created_at,
           level: 'info',
-          message: `Job ${inserted.id} salvo com sucesso na tabela agent_jobs do Supabase.`
+          message: `Job ${inserted.id} salvo na tabela agent_jobs do Supabase.`
         }
       ]
     };
   },
 
-  async updateJob(id: string, updates: Partial<{ status: string; result_summary: string; pr_url: string; error_message: string }>): Promise<any> {
+  async getJobById(id: string): Promise<ServerJob | null> {
+    const supabase = getSupabaseAdminServer();
+    if (!supabase) {
+      const j = getStore().jobs.find(x => x.id === id);
+      return j || null;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from('agent_jobs')
+        .select('*')
+        .eq('id', id)
+        .single();
+
+      if (error || !data) {
+        return getStore().jobs.find(x => x.id === id) || null;
+      }
+
+      return {
+        id: data.id,
+        repositoryId: mapRepoToUI(data.repo),
+        originalMessage: data.user_message,
+        status: data.status,
+        summary: data.result_summary || undefined,
+        branchName: data.branch_name || undefined,
+        prUrl: data.pr_url || undefined,
+        createdAt: data.created_at,
+        updatedAt: data.updated_at,
+        logs: [
+          {
+            timestamp: data.created_at,
+            level: 'info',
+            message: `Job carregado do Supabase. Repositório: ${data.repo}`
+          },
+          ...(data.result_summary ? [{
+            timestamp: data.updated_at,
+            level: 'success' as const,
+            message: data.result_summary
+          }] : []),
+          ...(data.error_message ? [{
+            timestamp: data.updated_at,
+            level: 'error' as const,
+            message: data.error_message
+          }] : [])
+        ]
+      };
+    } catch (err) {
+      console.warn('Erro ao buscar job por ID:', err);
+      return getStore().jobs.find(x => x.id === id) || null;
+    }
+  },
+
+  async updateJob(id: string, updates: Partial<{ status: string; result_summary: string; pr_url: string; branch_name: string; error_message: string }>): Promise<any> {
     const supabase = getSupabaseAdminServer();
     if (!supabase) {
       const storeJob = getStore().jobs.find(j => j.id === id);

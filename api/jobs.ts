@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { dbService } from './_supabase';
+import { enqueueJobExecution } from './_queue';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -33,17 +34,23 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     try {
-      const slug = originalMessage.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24);
-      const generatedBranch = branchName || `feat/${slug || 'task-auto'}`;
+      console.log(`[Jobs:POST] Recebida criação de job para repo="${repositoryId}": "${originalMessage.slice(0, 60)}..."`);
 
       const newJob = await dbService.createJob({
         repo: repositoryId,
-        userMessage: originalMessage,
-        branchName: generatedBranch
+        userMessage: originalMessage
+      });
+
+      console.log(`[Jobs:POST] Job ${newJob.id} criado com status="${newJob.status}". Enfileirando processamento...`);
+
+      const proto = (req.headers['x-forwarded-proto'] as string) || 'http';
+      enqueueJobExecution(newJob.id, req.headers.host, proto).catch(err => {
+        console.error(`[Jobs:POST] Erro ao enfileirar job ${newJob.id}:`, err);
       });
 
       return res.status(201).json(newJob);
     } catch (e: any) {
+      console.error(`[Jobs:POST] Erro ao criar job no Supabase:`, e);
       return res.status(500).json({ error: e.message || 'Erro ao criar job no Supabase' });
     }
   }

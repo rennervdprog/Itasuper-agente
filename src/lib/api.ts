@@ -1,6 +1,39 @@
-import { Job, ChatMessage, RepositoryInfo, RepositoryId } from '../types';
+import { Job, ChatMessage, RepositoryInfo, RepositoryId, RepoFileItem } from '../types';
 
 export const api = {
+  // Repo Tree & Files (/api/repo-tree)
+  getRepoTree: async (repoId: string, path = ''): Promise<{ ok: boolean; items?: RepoFileItem[]; error?: string }> => {
+    try {
+      const url = `/api/repo-tree?repo=${encodeURIComponent(repoId)}&path=${encodeURIComponent(path)}`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        return { ok: false, error: data.error || `HTTP ${res.status}` };
+      }
+      return { ok: true, items: data.items || [] };
+    } catch (e: any) {
+      return { ok: false, error: e.message || 'Erro de conexão ao buscar arquivos' };
+    }
+  },
+
+  getFileContent: async (repoId: string, path: string): Promise<{ ok: boolean; content?: string; size?: number; sha?: string; error?: string }> => {
+    try {
+      const url = `/api/repo-tree?repo=${encodeURIComponent(repoId)}&path=${encodeURIComponent(path)}&action=content`;
+      const res = await fetch(url);
+      const data = await res.json();
+      if (!res.ok || !data.ok) {
+        return { ok: false, error: data.error || `HTTP ${res.status}` };
+      }
+      return {
+        ok: true,
+        content: data.content,
+        size: data.size,
+        sha: data.sha
+      };
+    } catch (e: any) {
+      return { ok: false, error: e.message || 'Erro de conexão ao buscar conteúdo do arquivo' };
+    }
+  },
   // Auth (/api/auth)
   login: async (password: string): Promise<{ success: boolean; token?: string; error?: string }> => {
     try {

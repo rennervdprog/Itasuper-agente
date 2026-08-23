@@ -143,6 +143,19 @@ export const JobDetailPanel: React.FC<JobDetailPanelProps> = ({
             </div>
           </div>
 
+          {/* Result Summary if available */}
+          {job.summary && (
+            <div className="space-y-2">
+              <label className="text-xs font-semibold uppercase text-zinc-400 tracking-wider flex items-center gap-1.5">
+                <Terminal className="w-3.5 h-3.5 text-emerald-400" />
+                Resultado / Resposta da IA
+              </label>
+              <div className="p-3.5 sm:p-4 rounded-xl bg-zinc-950 border border-zinc-800/90 text-xs sm:text-sm text-zinc-200 leading-relaxed font-sans whitespace-pre-wrap break-words border-l-4 border-l-emerald-500">
+                {job.summary}
+              </div>
+            </div>
+          )}
+
           {/* Repository and Branch Info */}
           <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5 sm:gap-3">
             <div className="p-3 sm:p-3.5 rounded-xl bg-zinc-950/80 border border-zinc-800">

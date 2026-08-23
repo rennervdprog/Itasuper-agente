@@ -54,6 +54,18 @@ export interface Job {
   errorMessage?: string;
 }
 
+export type NavigationTab = 'chat' | 'jobs' | 'explorer';
+
+export interface RepoFileItem {
+  name: string;
+  path: string;
+  type: 'file' | 'dir' | 'symlink' | 'submodule';
+  size?: number;
+  sha: string;
+  html_url?: string;
+  download_url?: string | null;
+}
+
 export interface SupabaseConfig {
   url: string;
   anonKey: string;

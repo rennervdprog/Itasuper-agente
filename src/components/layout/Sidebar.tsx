@@ -8,6 +8,7 @@ import {
   LogOut, 
   Bot, 
   FolderGit2, 
+  FolderTree,
   Globe, 
   Smartphone, 
   Bike,
@@ -16,11 +17,11 @@ import {
   X
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
-import { RepositoryInfo, Job } from '../../types';
+import { RepositoryInfo, Job, NavigationTab } from '../../types';
 
 interface SidebarProps {
-  currentTab: 'chat' | 'jobs';
-  onSelectTab: (tab: 'chat' | 'jobs') => void;
+  currentTab: NavigationTab;
+  onSelectTab: (tab: NavigationTab) => void;
   repositories: RepositoryInfo[];
   activeRepoId: string;
   onSelectRepo: (id: any) => void;
@@ -55,7 +56,7 @@ export const Sidebar: React.FC<SidebarProps> = ({
     return <Bike className="w-4 h-4 text-amber-500 shrink-0" />;
   };
 
-  const handleTabClick = (tab: 'chat' | 'jobs') => {
+  const handleTabClick = (tab: NavigationTab) => {
     onSelectTab(tab);
     if (onCloseMobile) onCloseMobile();
   };
@@ -162,6 +163,27 @@ export const Sidebar: React.FC<SidebarProps> = ({
                   {jobs.length}
                 </span>
               )}
+            </button>
+
+            <button
+              onClick={() => handleTabClick('explorer')}
+              className={cn(
+                'w-full min-h-[44px] flex items-center justify-between px-3 py-2.5 rounded-xl text-sm font-medium transition-all text-left group',
+                currentTab === 'explorer'
+                  ? 'bg-emerald-600 text-white shadow-sm shadow-emerald-950'
+                  : 'text-zinc-400 hover:text-zinc-100 hover:bg-zinc-800/60'
+              )}
+            >
+              <div className="flex items-center gap-2.5">
+                <FolderTree className="w-4 h-4" />
+                <span>Explorador de Arquivos</span>
+              </div>
+              <span className={cn(
+                "text-[10px] px-1.5 py-0.5 rounded font-mono font-semibold",
+                currentTab === 'explorer' ? "bg-emerald-700 text-emerald-100" : "bg-zinc-800 text-zinc-400"
+              )}>
+                Git
+              </span>
             </button>
           </div>
 

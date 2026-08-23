@@ -39,7 +39,7 @@ const globalStore: ServerState = {
       updatedAt: new Date(Date.now() - 3600000 * 4).toISOString(),
       summary: 'Componente PromoCountdownBanner implementado na home com animação suave e integração com temas.',
       branchName: 'feat/promo-countdown-banner',
-      prUrl: 'https://github.com/itasuper/ifood-style-landing/pull/42',
+      prUrl: 'https://github.com/rennervdprog/ifood-style-landing/pull/42',
       prNumber: 42,
       filesModified: [
         'components/promotions/PromoCountdownBanner.tsx',
@@ -63,7 +63,7 @@ const globalStore: ServerState = {
       updatedAt: new Date(Date.now() - 3600000 * 22).toISOString(),
       summary: 'Tratamento de debounce no onEndReached e retry automático adicionado ao hook useProductPagination.',
       branchName: 'fix/hortifruti-infinite-scroll-retry',
-      prUrl: 'https://github.com/itasuper/Itasuper-APP-NATIVO/pull/87',
+      prUrl: 'https://github.com/rennervdprog/Itasuper-APP-NATIVO/pull/87',
       prNumber: 87,
       filesModified: [
         'src/hooks/useProductPagination.ts',

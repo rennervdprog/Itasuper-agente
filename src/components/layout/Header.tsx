@@ -1,17 +1,18 @@
 import React from 'react';
-import { RepositoryInfo, RepositoryId } from '../../types';
+import { RepositoryInfo, RepositoryId, NavigationTab } from '../../types';
 import { 
   Globe, 
   Smartphone, 
   Bike, 
   GitBranch, 
   ChevronDown,
-  Menu
+  Menu,
+  FolderTree
 } from 'lucide-react';
 import { cn } from '../../lib/utils';
 
 interface HeaderProps {
-  currentTab: 'chat' | 'jobs';
+  currentTab: NavigationTab;
   repositories: RepositoryInfo[];
   activeRepoId: RepositoryId;
   onSelectRepo: (repoId: RepositoryId) => void;
@@ -55,11 +56,18 @@ export const Header: React.FC<HeaderProps> = ({
                   Gerador de Jobs
                 </span>
               </>
-            ) : (
+            ) : currentTab === 'jobs' ? (
               <>
                 <span className="truncate">Histórico de Jobs</span>
                 <span className="hidden sm:inline text-xs font-normal text-zinc-400 bg-zinc-800 px-2 py-0.5 rounded-full shrink-0">
                   Pipeline & Status
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="truncate">Explorador de Arquivos</span>
+                <span className="hidden sm:inline text-xs font-normal text-emerald-400 bg-emerald-500/10 border border-emerald-500/30 px-2 py-0.5 rounded-full shrink-0">
+                  GitHub Tree
                 </span>
               </>
             )}
@@ -67,7 +75,9 @@ export const Header: React.FC<HeaderProps> = ({
           <p className="text-xs text-zinc-400 hidden sm:block truncate">
             {currentTab === 'chat' 
               ? 'Converse diretamente com o agente para solicitar tarefas nos repositórios'
-              : 'Acompanhe as execuções, PRs abertos e registros gerados'}
+              : currentTab === 'jobs'
+              ? 'Acompanhe as execuções, PRs abertos e registros gerados'
+              : `Navegue na estrutura de pastas e leia o código de ${activeRepo.name}`}
           </p>
         </div>
       </div>

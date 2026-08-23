@@ -3,9 +3,10 @@ import { Sidebar } from './components/layout/Sidebar';
 import { Header } from './components/layout/Header';
 import { ChatView } from './components/chat/ChatView';
 import { JobsView } from './components/jobs/JobsView';
+import { FileExplorerView } from './components/explorer/FileExplorerView';
 import { LoginView } from './components/auth/LoginView';
 import { REPOSITORIES, INITIAL_JOBS, INITIAL_MESSAGES } from './data/mockData';
-import { Job, ChatMessage, RepositoryId, JobStatus } from './types';
+import { Job, ChatMessage, RepositoryId, JobStatus, NavigationTab } from './types';
 import { localStore, SUPABASE_CONFIG } from './lib/supabase';
 import { api } from './lib/api';
 
@@ -16,7 +17,7 @@ export default function App() {
   });
 
   // Navigation and UI State
-  const [currentTab, setCurrentTab] = useState<'chat' | 'jobs'>('chat');
+  const [currentTab, setCurrentTab] = useState<NavigationTab>('chat');
   const [activeRepoId, setActiveRepoId] = useState<RepositoryId>('ifood-style-landing');
   const [theme, setTheme] = useState<'dark' | 'light'>(() => localStore.getTheme());
   const [selectedJobId, setSelectedJobId] = useState<string | null>(null);
@@ -49,6 +50,19 @@ export default function App() {
       loadServerData();
     }
   }, [isAuthenticated, loadServerData]);
+
+  // Polling automático a cada 3 segundos enquanto houver jobs em processamento (pending ou running)
+  useEffect(() => {
+    if (!isAuthenticated) return;
+    const hasActiveJobs = jobs.some(j => j.status === 'pending' || j.status === 'running');
+    if (!hasActiveJobs) return;
+
+    const interval = setInterval(() => {
+      loadServerData();
+    }, 3000);
+
+    return () => clearInterval(interval);
+  }, [isAuthenticated, jobs, loadServerData]);
 
   // Sync Theme to HTML class
   useEffect(() => {
@@ -92,30 +106,7 @@ export default function App() {
 
   const handleSendMessage = async (content: string, repoId: RepositoryId) => {
     const userMsgId = `msg-usr-${Date.now()}`;
-    const newJobId = `job-${Math.floor(100 + Math.random() * 900)}`;
-
-    const slug = content
-      .toLowerCase()
-      .replace(/[^a-z0-9]+/g, '-')
-      .slice(0, 24);
-    const branchName = `feat/${slug || 'task-auto'}`;
-
-    const newJob: Job = {
-      id: newJobId,
-      repositoryId: repoId,
-      status: 'pending',
-      originalMessage: content,
-      branchName: branchName,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      logs: [
-        {
-          timestamp: new Date().toISOString(),
-          level: 'info',
-          message: `Job ${newJobId} registrado pelo agente. Repositório: ${repoId}`
-        }
-      ]
-    };
+    const tempJobId = `job-${Math.floor(100 + Math.random() * 900)}`;
 
     const userMessage: ChatMessage = {
       id: userMsgId,
@@ -123,58 +114,59 @@ export default function App() {
       content: content,
       repositoryId: repoId,
       createdAt: new Date().toISOString(),
-      jobId: newJobId
+      jobId: tempJobId
     };
 
-    // Update local state immediately for responsive feedback
+    // Feedback imediato na tela com status pending
     setMessages(prev => [...prev, userMessage]);
-    setJobs(prev => [newJob, ...prev]);
 
-    // Persist via Serverless API if available
     try {
-      api.sendMessage(content, repoId).catch(() => {});
-    } catch {
-      // Handled via local fallback
-    }
+      const result = await api.sendMessage(content, repoId);
+      if (result && result.job) {
+        setJobs(prev => {
+          const filtered = prev.filter(j => j.id !== result.job.id);
+          return [result.job, ...filtered];
+        });
+      }
+      if (result && result.agentMessage) {
+        setMessages(prev => {
+          const filtered = prev.filter(m => m.id !== userMsgId);
+          return [...filtered, result.userMessage || userMessage, result.agentMessage];
+        });
+      }
+      // Atualizar lista de jobs do servidor
+      loadServerData();
+    } catch (err) {
+      console.warn('[App] Erro ao enviar mensagem para API, usando modo offline:', err);
+      const fallbackJob: Job = {
+        id: tempJobId,
+        repositoryId: repoId,
+        status: 'pending',
+        originalMessage: content,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        logs: [
+          {
+            timestamp: new Date().toISOString(),
+            level: 'info',
+            message: `Job registrado no painel.`
+          }
+        ]
+      };
+      setJobs(prev => [fallbackJob, ...prev]);
 
-    // Simulate Agent response
-    setTimeout(() => {
       const agentMsgId = `msg-agent-${Date.now()}`;
       const repoName = REPOSITORIES.find(r => r.id === repoId)?.name || repoId;
-      
       const agentMessage: ChatMessage = {
         id: agentMsgId,
         sender: 'agent',
-        content: `Recebi sua solicitação para o repositório **${repoName}**! Criei o **Job ${newJobId}** e preparei o branch \`${branchName}\` para análise e execução automatizada.`,
+        content: `Recebi sua solicitação para o repositório **${repoName}**! O **Job ${tempJobId}** foi registrado com status **pending**.`,
         repositoryId: repoId,
         createdAt: new Date().toISOString(),
-        jobId: newJobId
+        jobId: tempJobId
       };
-
       setMessages(prev => [...prev, agentMessage]);
-
-      // Move job to running status simulation
-      setJobs(prev =>
-        prev.map(j => {
-          if (j.id === newJobId) {
-            return {
-              ...j,
-              status: 'running',
-              updatedAt: new Date().toISOString(),
-              logs: [
-                ...j.logs,
-                {
-                  timestamp: new Date().toISOString(),
-                  level: 'info',
-                  message: `Agente clonou o repositório e iniciou análise estática dos arquivos.`
-                }
-              ]
-            };
-          }
-          return j;
-        })
-      );
-    }, 1200);
+    }
   };
 
   const handleAdvanceJobStatus = (jobId: string) => {
@@ -199,11 +191,12 @@ export default function App() {
             level: 'success',
             message: 'Alterações commitadas no branch. Pull Request gerado no GitHub.'
           });
+          const prNumber = Math.floor(10 + Math.random() * 80);
           return {
             ...j,
             status: nextStatus,
-            prNumber: Math.floor(10 + Math.random() * 80),
-            prUrl: `https://github.com/Itasuper/${j.repositoryId}/pull/${Math.floor(10 + Math.random() * 80)}`,
+            prNumber,
+            prUrl: `https://github.com/rennervdprog/${j.repositoryId}/pull/${prNumber}`,
             updatedAt: new Date().toISOString(),
             logs: updatedLogs,
             filesModified: [
@@ -237,7 +230,7 @@ export default function App() {
     setMobileMenuOpen(false);
   };
 
-  const handleSelectTab = (tab: 'chat' | 'jobs') => {
+  const handleSelectTab = (tab: NavigationTab) => {
     setCurrentTab(tab);
     setMobileMenuOpen(false);
   };
@@ -291,13 +284,19 @@ export default function App() {
               jobs={jobs}
               onOpenJob={handleOpenJobDetails}
             />
-          ) : (
+          ) : currentTab === 'jobs' ? (
             <JobsView
               jobs={jobs}
               repositories={REPOSITORIES}
               selectedJobId={selectedJobId}
               onSelectJob={setSelectedJobId}
               onAdvanceJobStatus={handleAdvanceJobStatus}
+            />
+          ) : (
+            <FileExplorerView
+              repositories={REPOSITORIES}
+              activeRepoId={activeRepoId}
+              onSelectRepo={setActiveRepoId}
             />
           )}
         </main>
