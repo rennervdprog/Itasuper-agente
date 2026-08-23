@@ -1,5 +1,5 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
-import { getStore, ServerJob } from './_store';
+import { dbService } from './_supabase';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -10,25 +10,21 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(200).end();
   }
 
-  const store = getStore();
-
-  // GET /api/jobs -> List all jobs
+  // GET /api/jobs -> List all jobs from Supabase agent_jobs or store
   if (req.method === 'GET') {
     const { repositoryId, status } = req.query;
-    let result = store.jobs;
-
-    if (repositoryId && typeof repositoryId === 'string') {
-      result = result.filter(j => j.repositoryId === repositoryId);
+    try {
+      const jobs = await dbService.getJobs(
+        typeof repositoryId === 'string' ? repositoryId : undefined,
+        typeof status === 'string' ? status : undefined
+      );
+      return res.status(200).json(jobs);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message || 'Erro ao buscar jobs' });
     }
-
-    if (status && typeof status === 'string') {
-      result = result.filter(j => j.status === status);
-    }
-
-    return res.status(200).json(result);
   }
 
-  // POST /api/jobs -> Create new job manually
+  // POST /api/jobs -> Create new job in Supabase agent_jobs
   if (req.method === 'POST') {
     const { repositoryId, originalMessage, branchName } = req.body || {};
 
@@ -36,35 +32,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
       return res.status(400).json({ error: 'repositoryId e originalMessage são obrigatórios' });
     }
 
-    const newJobId = `job-${Math.floor(100 + Math.random() * 900)}`;
-    const slug = originalMessage.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24);
-    const generatedBranch = branchName || `feat/${slug || 'task-auto'}`;
+    try {
+      const slug = originalMessage.toLowerCase().replace(/[^a-z0-9]+/g, '-').slice(0, 24);
+      const generatedBranch = branchName || `feat/${slug || 'task-auto'}`;
 
-    const newJob: ServerJob = {
-      id: newJobId,
-      repositoryId,
-      originalMessage,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-      summary: `Execução solicitada para ${repositoryId}: "${originalMessage}"`,
-      branchName: generatedBranch,
-      filesModified: [
-        repositoryId === 'ifood-style-landing' ? 'src/components/feature/NewModule.tsx' :
-        repositoryId === 'Itasuper-APP-NATIVO' ? 'src/screens/AppFeatureScreen.tsx' : 'services/deliveryTask.ts'
-      ],
-      logs: [
-        {
-          timestamp: new Date().toISOString(),
-          level: 'info',
-          message: `Job registrado com sucesso para ${repositoryId}.`
-        }
-      ]
-    };
+      const newJob = await dbService.createJob({
+        repo: repositoryId,
+        userMessage: originalMessage,
+        branchName: generatedBranch
+      });
 
-    store.jobs.unshift(newJob);
-
-    return res.status(201).json(newJob);
+      return res.status(201).json(newJob);
+    } catch (e: any) {
+      return res.status(500).json({ error: e.message || 'Erro ao criar job no Supabase' });
+    }
   }
 
   return res.status(405).json({ error: 'Method not allowed' });

@@ -1,21 +1,161 @@
-import { Job, ChatMessage } from '../types';
+import { createClient, SupabaseClient } from '@supabase/supabase-js';
+import { Job, ChatMessage, RepositoryId } from '../types';
 
 /**
- * Supabase client configuration stub.
- * Quando você fornecer as credenciais do Supabase no futuro,
- * este módulo conectará diretamente à tabela `jobs` e `chat_messages`.
+ * Types representing the real Supabase database schema (supabase/migrations/001_init.sql)
  */
+export interface AgentJobRow {
+  id: string;
+  repo: 'ifood-style-landing' | 'itasuper-app-nativo' | 'itasuper-entregador';
+  user_message: string;
+  status: 'pending' | 'running' | 'pr_aberto' | 'concluido' | 'erro';
+  result_summary: string | null;
+  pr_url: string | null;
+  branch_name: string | null;
+  error_message: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
+export interface AgentMemoryRow {
+  id: string;
+  repo: string;
+  content: string;
+  memory_type: 'decisao' | 'convencao' | 'bug_resolvido' | 'preferencia' | 'contexto_geral';
+  embedding: number[] | null;
+  created_at: string;
+}
+
+/**
+ * Configuration & Credentials
+ */
+const supabaseUrl = 
+  (typeof process !== 'undefined' && process.env?.SUPABASE_URL) ||
+  import.meta.env?.VITE_SUPABASE_URL ||
+  '';
+
+const supabaseAnonKey = 
+  (typeof process !== 'undefined' && process.env?.SUPABASE_ANON_KEY) ||
+  import.meta.env?.VITE_SUPABASE_ANON_KEY ||
+  '';
 
 export const SUPABASE_CONFIG = {
-  url: import.meta.env.VITE_SUPABASE_URL || '',
-  anonKey: import.meta.env.VITE_SUPABASE_ANON_KEY || '',
+  url: supabaseUrl,
+  anonKey: supabaseAnonKey,
   isConfigured: Boolean(
-    import.meta.env.VITE_SUPABASE_URL && 
-    import.meta.env.VITE_SUPABASE_URL !== 'https://your-project.supabase.co' &&
-    import.meta.env.VITE_SUPABASE_ANON_KEY
+    supabaseUrl && 
+    supabaseUrl !== 'https://your-project.supabase.co' &&
+    supabaseAnonKey &&
+    supabaseAnonKey !== 'your-anon-key-here'
   )
 };
 
+/**
+ * 1. Public Client (Anon Key)
+ * For optional frontend usage or read subscriptions if configured with anon permissions.
+ */
+let publicClient: SupabaseClient | null = null;
+
+export function getSupabaseClient(): SupabaseClient | null {
+  if (!SUPABASE_CONFIG.isConfigured) {
+    return null;
+  }
+  if (!publicClient) {
+    publicClient = createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        persistSession: true,
+        autoRefreshToken: true
+      }
+    });
+  }
+  return publicClient;
+}
+
+export const supabase = SUPABASE_CONFIG.isConfigured ? getSupabaseClient() : null;
+
+/**
+ * 2. Admin Client (Service Role Key)
+ * Exclusive for server-side API routes (/api/*).
+ * NEVER expose the service role key to the browser client.
+ */
+let adminClient: SupabaseClient | null = null;
+
+export function getSupabaseAdmin(): SupabaseClient {
+  // Guard against browser execution
+  if (typeof window !== 'undefined') {
+    throw new Error('Supabase Admin Client (service_role) cannot be accessed from the browser.');
+  }
+
+  if (adminClient) {
+    return adminClient;
+  }
+
+  const url = process.env.SUPABASE_URL || process.env.VITE_SUPABASE_URL || supabaseUrl;
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
+
+  if (!url || !serviceRoleKey || serviceRoleKey === 'your-service-role-key-here') {
+    throw new Error('SUPABASE_URL and SUPABASE_SERVICE_ROLE_KEY environment variables are required for Admin operations.');
+  }
+
+  adminClient = createClient(url, serviceRoleKey, {
+    auth: {
+      persistSession: false,
+      autoRefreshToken: false
+    }
+  });
+
+  return adminClient;
+}
+
+/**
+ * Normalization helpers between UI casing and Supabase database constraints
+ */
+export function normalizeRepoForDb(repoId: string): 'ifood-style-landing' | 'itasuper-app-nativo' | 'itasuper-entregador' {
+  const clean = repoId.toLowerCase().replace(/[^a-z0-9-]/g, '').replace(/-+$/, '');
+  if (clean.includes('nativo')) return 'itasuper-app-nativo';
+  if (clean.includes('entregador')) return 'itasuper-entregador';
+  return 'ifood-style-landing';
+}
+
+export function mapDbJobToUI(dbJob: AgentJobRow): Job {
+  let uiRepo: RepositoryId = 'ifood-style-landing';
+  if (dbJob.repo === 'itasuper-app-nativo') uiRepo = 'Itasuper-APP-NATIVO';
+  else if (dbJob.repo === 'itasuper-entregador') uiRepo = 'Itasuper-entregador-';
+
+  return {
+    id: dbJob.id,
+    repositoryId: uiRepo,
+    originalMessage: dbJob.user_message,
+    status: dbJob.status,
+    summary: dbJob.result_summary || undefined,
+    branchName: dbJob.branch_name || undefined,
+    prUrl: dbJob.pr_url || undefined,
+    errorMessage: dbJob.error_message || undefined,
+    createdAt: dbJob.created_at,
+    updatedAt: dbJob.updated_at,
+    logs: [
+      {
+        timestamp: dbJob.created_at,
+        level: 'info',
+        message: `Job registrado no Supabase (ID: ${dbJob.id}). Repositório: ${dbJob.repo}`
+      },
+      ...(dbJob.result_summary ? [{
+        timestamp: dbJob.updated_at,
+        level: 'success' as const,
+        message: dbJob.result_summary
+      }] : []),
+      ...(dbJob.error_message ? [{
+        timestamp: dbJob.updated_at,
+        level: 'error' as const,
+        message: dbJob.error_message
+      }] : [])
+    ]
+  };
+}
+
+/**
+ * Storage keys and client-side fallback store
+ */
 const STORAGE_KEYS = {
   JOBS: 'itasuper_agent_jobs_v1',
   MESSAGES: 'itasuper_agent_messages_v1',
@@ -24,7 +164,6 @@ const STORAGE_KEYS = {
   THEME: 'itasuper_agent_theme',
 };
 
-// Local storage storage adapters (simulando a camada Supabase)
 export const localStore = {
   getJobs: (initialJobs: Job[]): Job[] => {
     try {

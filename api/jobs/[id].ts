@@ -1,5 +1,6 @@
 import type { VercelRequest, VercelResponse } from '@vercel/node';
 import { getStore, ServerJob } from '../_store';
+import { dbService } from '../_supabase';
 
 export default async function handler(req: VercelRequest, res: VercelResponse) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -17,21 +18,28 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     return res.status(400).json({ error: 'ID do job é obrigatório' });
   }
 
-  const jobIndex = store.jobs.findIndex(j => j.id === id);
-  if (jobIndex === -1) {
-    return res.status(404).json({ error: `Job ${id} não encontrado` });
-  }
-
-  const job = store.jobs[jobIndex];
-
   // GET /api/jobs/[id] -> Detalhes de um Job
   if (req.method === 'GET') {
-    return res.status(200).json(job);
+    const jobIndex = store.jobs.findIndex(j => j.id === id);
+    if (jobIndex !== -1) {
+      return res.status(200).json(store.jobs[jobIndex]);
+    }
+    return res.status(200).json({ id, status: 'pending' });
   }
 
   // POST /api/jobs/[id] ou PATCH /api/jobs/[id] -> Avançar status do Job
   if (req.method === 'POST' || req.method === 'PATCH') {
-    const { action, status: targetStatus } = req.body || {};
+    const { status: targetStatus } = req.body || {};
+
+    const job = store.jobs.find(j => j.id === id) || {
+      id,
+      repositoryId: 'ifood-style-landing' as const,
+      originalMessage: '',
+      status: 'pending' as const,
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString(),
+      logs: []
+    };
 
     const nextStatusMap: Record<string, ServerJob['status']> = {
       pending: 'running',
@@ -44,7 +52,11 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     const nextStatus = targetStatus || nextStatusMap[job.status] || 'running';
     const updatedLogs = [...(job.logs || [])];
 
+    let prUrl: string | undefined = job.prUrl;
+    let resultSummary: string | undefined = job.summary;
+
     if (nextStatus === 'running') {
+      resultSummary = 'Execução em andamento pelo Agente.';
       updatedLogs.push({
         timestamp: new Date().toISOString(),
         level: 'info',
@@ -53,13 +65,16 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     } else if (nextStatus === 'pr_aberto') {
       const prNumber = Math.floor(10 + Math.random() * 89);
       job.prNumber = prNumber;
-      job.prUrl = `https://github.com/itasuper/${job.repositoryId}/pull/${prNumber}`;
+      prUrl = `https://github.com/itasuper/${job.repositoryId}/pull/${prNumber}`;
+      job.prUrl = prUrl;
+      resultSummary = `Pull Request #${prNumber} gerado e pronto para revisão.`;
       updatedLogs.push({
         timestamp: new Date().toISOString(),
         level: 'success',
         message: `Pull Request #${prNumber} aberto automaticamente no repositório.`
       });
     } else if (nextStatus === 'concluido') {
+      resultSummary = 'Job finalizado com sucesso e branch mergeada.';
       updatedLogs.push({
         timestamp: new Date().toISOString(),
         level: 'success',
@@ -68,8 +83,20 @@ export default async function handler(req: VercelRequest, res: VercelResponse) {
     }
 
     job.status = nextStatus;
+    job.summary = resultSummary;
     job.updatedAt = new Date().toISOString();
     job.logs = updatedLogs;
+
+    // Sync to Supabase agent_jobs if available
+    try {
+      await dbService.updateJob(id, {
+        status: nextStatus,
+        result_summary: resultSummary,
+        pr_url: prUrl
+      });
+    } catch (e) {
+      console.warn('Erro ao atualizar status no Supabase:', e);
+    }
 
     return res.status(200).json(job);
   }

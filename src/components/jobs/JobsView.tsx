@@ -1,19 +1,17 @@
 import React, { useState } from 'react';
 import { 
   Search, 
-  Filter, 
   Layers, 
-  Calendar, 
   ArrowUpRight, 
-  FolderGit2, 
   Globe, 
   Smartphone, 
   Bike,
   Clock,
   CheckCircle2,
   Loader2,
-  AlertCircle,
-  Sparkles
+  Sparkles,
+  GitBranch,
+  ChevronRight
 } from 'lucide-react';
 import { Job, JobStatus, RepositoryId, RepositoryInfo } from '../../types';
 import { StatusBadge } from '../ui/Badge';
@@ -64,69 +62,69 @@ export const JobsView: React.FC<JobsViewProps> = ({
   };
 
   const getRepoIcon = (repoId: string) => {
-    if (repoId === 'ifood-style-landing') return <Globe className="w-4 h-4 text-emerald-400" />;
-    if (repoId === 'Itasuper-APP-NATIVO') return <Smartphone className="w-4 h-4 text-blue-400" />;
-    return <Bike className="w-4 h-4 text-amber-400" />;
+    if (repoId === 'ifood-style-landing') return <Globe className="w-4 h-4 text-emerald-400 shrink-0" />;
+    if (repoId === 'Itasuper-APP-NATIVO') return <Smartphone className="w-4 h-4 text-blue-400 shrink-0" />;
+    return <Bike className="w-4 h-4 text-amber-400 shrink-0" />;
   };
 
   return (
-    <div className="flex-1 overflow-y-auto bg-zinc-950 p-6 space-y-6 text-zinc-100">
+    <div className="flex-1 overflow-y-auto overflow-x-hidden bg-zinc-950 p-3 sm:p-6 space-y-4 sm:space-y-6 text-zinc-100">
       {/* Metric Stat Cards */}
-      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-xs text-zinc-400 flex items-center justify-between">
-            <span>Total de Jobs</span>
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-2.5 sm:gap-4">
+        <div className="bg-zinc-900 border border-zinc-800 p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between shadow-sm">
+          <span className="text-[11px] sm:text-xs text-zinc-400 flex items-center justify-between">
+            <span>Total Jobs</span>
             <Layers className="w-4 h-4 text-zinc-500" />
           </span>
-          <span className="text-2xl font-bold text-zinc-100 mt-2 font-mono">{counts.total}</span>
+          <span className="text-xl sm:text-2xl font-bold text-zinc-100 mt-1.5 font-mono">{counts.total}</span>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-xs text-zinc-400 flex items-center justify-between">
+        <div className="bg-zinc-900 border border-zinc-800 p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between shadow-sm">
+          <span className="text-[11px] sm:text-xs text-zinc-400 flex items-center justify-between">
             <span>Em Execução</span>
             <Loader2 className="w-4 h-4 text-blue-400 animate-spin" />
           </span>
-          <span className="text-2xl font-bold text-blue-400 mt-2 font-mono">{counts.running}</span>
+          <span className="text-xl sm:text-2xl font-bold text-blue-400 mt-1.5 font-mono">{counts.running}</span>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-xs text-zinc-400 flex items-center justify-between">
+        <div className="bg-zinc-900 border border-zinc-800 p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between shadow-sm">
+          <span className="text-[11px] sm:text-xs text-zinc-400 flex items-center justify-between">
             <span>PRs Abertos</span>
             <Sparkles className="w-4 h-4 text-purple-400" />
           </span>
-          <span className="text-2xl font-bold text-purple-400 mt-2 font-mono">{counts.pr_aberto}</span>
+          <span className="text-xl sm:text-2xl font-bold text-purple-400 mt-1.5 font-mono">{counts.pr_aberto}</span>
         </div>
 
-        <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex flex-col justify-between">
-          <span className="text-xs text-zinc-400 flex items-center justify-between">
+        <div className="bg-zinc-900 border border-zinc-800 p-3.5 sm:p-4 rounded-2xl flex flex-col justify-between shadow-sm">
+          <span className="text-[11px] sm:text-xs text-zinc-400 flex items-center justify-between">
             <span>Concluídos</span>
             <CheckCircle2 className="w-4 h-4 text-emerald-400" />
           </span>
-          <span className="text-2xl font-bold text-emerald-400 mt-2 font-mono">{counts.concluido}</span>
+          <span className="text-xl sm:text-2xl font-bold text-emerald-400 mt-1.5 font-mono">{counts.concluido}</span>
         </div>
       </div>
 
       {/* Filter and Search Bar */}
-      <div className="bg-zinc-900 border border-zinc-800 p-4 rounded-2xl flex flex-col md:flex-row gap-3 items-center justify-between">
+      <div className="bg-zinc-900 border border-zinc-800 p-3 sm:p-4 rounded-2xl flex flex-col md:flex-row gap-2.5 sm:gap-3 items-stretch md:items-center justify-between">
         {/* Search */}
-        <div className="relative w-full md:w-80">
-          <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-3 pointer-events-none" />
+        <div className="relative flex-1">
+          <Search className="w-4 h-4 text-zinc-500 absolute left-3.5 top-1/2 -translate-y-1/2 pointer-events-none" />
           <input
             type="text"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
             placeholder="Buscar por ID, mensagem ou branch..."
-            className="w-full bg-zinc-950 border border-zinc-800 pl-10 pr-4 py-2 rounded-xl text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-all"
+            className="w-full bg-zinc-950 border border-zinc-800 pl-10 pr-4 py-2.5 min-h-[44px] rounded-xl text-base sm:text-xs text-zinc-100 placeholder-zinc-500 focus:outline-none focus:border-emerald-500 transition-all"
           />
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap items-center gap-2.5 w-full md:w-auto">
+        <div className="grid grid-cols-1 sm:grid-cols-2 md:flex items-center gap-2">
           {/* Status Filter */}
           <select
             value={statusFilter}
             onChange={(e) => setStatusFilter(e.target.value as any)}
-            className="bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-3 py-2 outline-none focus:border-emerald-500"
+            className="w-full md:w-auto min-h-[44px] bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-3 py-2 outline-none focus:border-emerald-500 cursor-pointer"
           >
             <option value="all">Todos os Status</option>
             <option value="pending">Pendente</option>
@@ -140,7 +138,7 @@ export const JobsView: React.FC<JobsViewProps> = ({
           <select
             value={repoFilter}
             onChange={(e) => setRepoFilter(e.target.value as any)}
-            className="bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-3 py-2 outline-none focus:border-emerald-500"
+            className="w-full md:w-auto min-h-[44px] bg-zinc-950 border border-zinc-800 text-xs text-zinc-300 rounded-xl px-3 py-2 outline-none focus:border-emerald-500 cursor-pointer"
           >
             <option value="all">Todos os Repositórios</option>
             {repositories.map(repo => (
@@ -152,18 +150,18 @@ export const JobsView: React.FC<JobsViewProps> = ({
         </div>
       </div>
 
-      {/* Jobs List / Table */}
-      <div className="bg-zinc-900 border border-zinc-800 rounded-2xl overflow-hidden">
+      {/* Jobs Container: Stacked Cards on Mobile / Clean rows on Desktop */}
+      <div className="space-y-3 md:space-y-0 md:bg-zinc-900 md:border md:border-zinc-800 md:rounded-2xl md:overflow-hidden">
         {filteredJobs.length === 0 ? (
-          <div className="p-12 text-center space-y-3">
+          <div className="p-8 sm:p-12 text-center space-y-3 bg-zinc-900 border border-zinc-800 rounded-2xl md:border-0">
             <Layers className="w-10 h-10 text-zinc-600 mx-auto" />
             <h4 className="text-sm font-semibold text-zinc-300">Nenhum job encontrado</h4>
-            <p className="text-xs text-zinc-400">
-              Tente ajustar os filtros de busca ou envie uma nova mensagem no chat para criar um job.
+            <p className="text-xs text-zinc-400 max-w-sm mx-auto">
+              Tente ajustar os filtros de busca ou envie uma nova mensagem no chat para iniciar um job.
             </p>
           </div>
         ) : (
-          <div className="divide-y divide-zinc-800/80">
+          <div className="grid grid-cols-1 gap-3 md:gap-0 md:divide-y md:divide-zinc-800/80">
             {filteredJobs.map((job) => {
               const isSelected = selectedJobId === job.id;
               return (
@@ -171,38 +169,57 @@ export const JobsView: React.FC<JobsViewProps> = ({
                   key={job.id}
                   onClick={() => onSelectJob(job.id)}
                   className={cn(
-                    'p-4 sm:p-5 flex flex-col md:flex-row md:items-center justify-between gap-4 hover:bg-zinc-800/40 transition-colors cursor-pointer group',
-                    isSelected && 'bg-zinc-800/60 ring-1 ring-emerald-500/40'
+                    // Mobile card styling
+                    'bg-zinc-900 border border-zinc-800 rounded-2xl p-4 flex flex-col gap-3 transition-all cursor-pointer select-none active:scale-[0.99] active:bg-zinc-850',
+                    // Desktop row overrides
+                    'md:rounded-none md:border-0 md:p-5 md:flex-row md:items-center md:justify-between md:hover:bg-zinc-800/40',
+                    isSelected && 'ring-2 ring-emerald-500/50 bg-zinc-800/70'
                   )}
                 >
-                  {/* Left info */}
-                  <div className="space-y-1.5 max-w-2xl">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <span className="font-mono text-xs font-bold text-zinc-200">
-                        {job.id}
-                      </span>
-                      <div className="flex items-center gap-1 text-xs text-zinc-400 bg-zinc-950 px-2 py-0.5 rounded-lg border border-zinc-800">
-                        {getRepoIcon(job.repositoryId)}
-                        <span className="font-mono text-[11px]">{job.repositoryId}</span>
+                  {/* Top / Main info */}
+                  <div className="space-y-2 max-w-2xl min-w-0">
+                    {/* Header line: ID + Repo + Status */}
+                    <div className="flex flex-wrap items-center justify-between sm:justify-start gap-2">
+                      <div className="flex items-center gap-2">
+                        <span className="font-mono text-xs font-bold text-zinc-100 bg-zinc-950 px-2 py-0.5 rounded-lg border border-zinc-800">
+                          {job.id}
+                        </span>
+                        <div className="flex items-center gap-1.5 text-xs text-zinc-400 bg-zinc-950/80 px-2 py-0.5 rounded-lg border border-zinc-800/80">
+                          {getRepoIcon(job.repositoryId)}
+                          <span className="font-mono text-[11px] truncate max-w-[130px] sm:max-w-none">{job.repositoryId}</span>
+                        </div>
                       </div>
                       <StatusBadge status={job.status} />
                     </div>
 
-                    <p className="text-sm text-zinc-200 font-medium line-clamp-2">
+                    {/* Original message text */}
+                    <p className="text-xs sm:text-sm text-zinc-200 font-medium line-clamp-2 leading-relaxed">
                       {job.originalMessage}
                     </p>
 
-                    {job.branchName && (
-                      <div className="flex items-center gap-2 text-[11px] text-zinc-400 font-mono">
-                        <span>branch: {job.branchName}</span>
-                      </div>
-                    )}
+                    {/* Branch and date info for mobile */}
+                    <div className="flex flex-wrap items-center gap-3 text-[11px] text-zinc-400 font-mono pt-1">
+                      {job.branchName && (
+                        <span className="flex items-center gap-1 text-emerald-400/90 truncate max-w-[200px] sm:max-w-none">
+                          <GitBranch className="w-3 h-3 shrink-0" />
+                          <span className="truncate">{job.branchName}</span>
+                        </span>
+                      )}
+                      <span className="flex items-center gap-1 text-zinc-400">
+                        <Clock className="w-3 h-3 shrink-0" />
+                        <span>{formatTimeAgo(job.createdAt)}</span>
+                      </span>
+                    </div>
                   </div>
 
-                  {/* Right metadata and action button */}
-                  <div className="flex items-center justify-between md:justify-end gap-4 shrink-0">
-                    <div className="text-right">
-                      <span className="text-xs text-zinc-400 block">
+                  {/* Action Button & Desktop Timestamp */}
+                  <div className="flex items-center justify-between md:justify-end gap-3 pt-2 border-t border-zinc-800/60 md:pt-0 md:border-0 shrink-0">
+                    <span className="text-[11px] text-zinc-400 md:hidden font-mono">
+                      {formatDate(job.createdAt).split(' ')[0]}
+                    </span>
+
+                    <div className="hidden md:block text-right mr-2">
+                      <span className="text-xs text-zinc-400 block font-mono">
                         {formatTimeAgo(job.createdAt)}
                       </span>
                       <span className="text-[11px] text-zinc-400">
@@ -212,9 +229,9 @@ export const JobsView: React.FC<JobsViewProps> = ({
 
                     <button
                       type="button"
-                      className="px-3 py-1.5 rounded-xl bg-zinc-800 text-zinc-300 group-hover:bg-emerald-600 group-hover:text-white text-xs font-medium transition-all flex items-center gap-1 cursor-pointer"
+                      className="min-h-[40px] px-3.5 py-1.5 rounded-xl bg-zinc-800 text-zinc-200 hover:bg-emerald-600 hover:text-white text-xs font-semibold transition-all flex items-center gap-1.5 cursor-pointer ml-auto md:ml-0 shadow-sm"
                     >
-                      <span>Ver Painel</span>
+                      <span>Ver Detalhes</span>
                       <ArrowUpRight className="w-3.5 h-3.5" />
                     </button>
                   </div>
@@ -225,7 +242,7 @@ export const JobsView: React.FC<JobsViewProps> = ({
         )}
       </div>
 
-      {/* Slide-out detail drawer */}
+      {/* Slide-out detail drawer on desktop / Fullscreen on mobile */}
       {selectedJob && (
         <JobDetailPanel
           job={selectedJob}
